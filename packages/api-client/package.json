@@ -1,0 +1,20 @@
+{
+  "name": "@streaming/api-client",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schemas": "./src/schemas/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@streaming/tsconfig": "workspace:*",
+    "typescript": "^5.8.2"
+  }
+}

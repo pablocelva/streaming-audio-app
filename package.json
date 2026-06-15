@@ -1,0 +1,11 @@
+{
+  "name": "streaming-audio-app",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "web:dev": "pnpm --filter web dev",
+    "web:build": "pnpm --filter web build",
+    "mobile:dev": "pnpm --filter mobile start",
+    "api:typecheck": "pnpm --filter @streaming/api-client typecheck"
+  }
+}

@@ -13,7 +13,7 @@ El proyecto se desarrollará de forma iterativa utilizando Inteligencia Artifici
 - **Almacenamiento de Audio:** Servicio de almacenamiento de objetos externo con CDN. MVP: **Cloudflare R2** o **AWS S3** (S3-compatible). No se almacenarán archivos binarios en la base de datos.
 - **Pagos:** Stripe (modo prueba en desarrollo, producción en Fase 4).
 - **API:** REST versionada (`/api/v1`) con contrato **OpenAPI 3** generado desde Spring Boot.
-- **Repositorio:** Monorepo con carpetas `backend/`, `web/`, `mobile/`.
+- **Repositorio:** Monorepo pnpm — `apps/web`, `apps/mobile`, `packages/api-client`, `backend/`.
 - **CI/CD:** GitHub Actions (build + tests en cada PR desde Fase 1).
 - **Entornos:** `local` → `staging` → `prod` (configurados desde Fase 1).
 
@@ -101,7 +101,8 @@ Un usuario puede tener varios roles (ej.: `USER` + `ARTIST`). La suscripción (`
 - Validar reglas de regalías de la sección 2 con el documento legal.
 - Definir contrato OpenAPI v1 (endpoints, DTOs, códigos de error).
 - Elegir proveedor de storage definitivo para MVP (R2 o S3).
-- Configurar monorepo, `.env.example`, Docker Compose local (PostgreSQL + MinIO opcional).
+- Configurar monorepo pnpm (`apps/`, `packages/`), `.env.example`, Docker Compose local.
+- Documentar arquitectura en `DOC-ARQUITECTURA.md`.
 - Documentar formatos de audio aceptados (ver sección 5).
 
 ### Fase 1: Cimientos, Base de Datos y Backend Core
@@ -123,17 +124,33 @@ Un usuario puede tener varios roles (ej.: `USER` + `ARTIST`). La suscripción (`
 
 **Objetivo:** Que los artistas gestionen su catálogo y vean estadísticas sin depender aún de pagos reales.
 
-- Proyecto React + Vite + TypeScript en `web/`.
-- Vistas: Login, Registro de Artista, Subida de Música (álbum + canciones), Dashboard de Estadísticas (reproducciones totales, top canciones, gráfico temporal).
-- Firma de declaración de no-IA (checkbox + registro con timestamp/IP).
-- Conexión con API Fase 1.
+**Ubicación:** `apps/web/` — arquitectura **feature-first** (ver `DOC-ARQUITECTURA.md`).
+
+**Stack:** React 19 + Vite + TypeScript + **pnpm** + **Zod** (`@streaming/api-client`).
+
+**Estructura de features a implementar:**
+
+| Feature | Endpoints API | Prioridad |
+|---------|---------------|-----------|
+| `features/auth` | `/auth/login`, `/auth/register/artist` | Alta — login ya scaffolded |
+| `features/artist-declaration` | `/artists/me/declaration` | Alta |
+| `features/upload-music` | `/albums`, `/albums/{id}/songs` | Alta |
+| `features/artist-stats` | `/artists/me/stats` | Media |
+
+**Tareas:**
+
+- Completar registro de artista con validación Zod.
+- Formulario de subida: crear álbum + subir canciones (multipart, `durationSeconds`).
+- Dashboard: reproducciones totales, desglose gratis/premium, peso acumulado, top canciones.
+- Firma de declaración de no-IA (checkbox + versión documento).
+- Extraer componentes reutilizables a `entities/` y `shared/ui/` según necesidad.
 - Tests E2E mínimos del flujo de subida.
 
 ### Fase 2B: Panel Admin Web
 
 **Objetivo:** Operación interna mínima de la plataforma.
 
-- Vistas admin: cola de verificación de artistas, listado de catálogo, revisión de declaraciones no-IA.
+**Ubicación:** `apps/web/src/features/admin-verification/` (misma app, rutas protegidas con rol `ADMIN`).
 - Gestión de estados: activar/suspender artista o canción.
 - Dashboard global: usuarios registrados, reproducciones del mes, ingresos pendientes.
 - Solo accesible con rol `ADMIN`.
