@@ -17,7 +17,12 @@ import com.streamingethico.shared.domain.ApiException;
 import com.streamingethico.shared.common.HashUtils;
 import com.streamingethico.shared.domain.RoleName;
 import com.streamingethico.modules.storage.infrastructure.StorageService;
+import com.streamingethico.modules.user.domain.Subscription;
+import com.streamingethico.modules.user.infrastructure.SubscriptionRepository;
 import com.streamingethico.modules.user.infrastructure.UserRepository;
+import com.streamingethico.shared.domain.SubscriptionPlan;
+import com.streamingethico.shared.domain.SubscriptionStatus;
+import com.streamingethico.shared.security.UserPrincipal;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,10 +35,13 @@ import java.util.UUID;
 @Service
 public class CatalogService {
 
+    private static final int GUEST_PREVIEW_SECONDS = 30;
+
     private final AlbumRepository albumRepository;
     private final SongRepository songRepository;
     private final ArtistRepository artistRepository;
     private final UserRepository userRepository;
+    private final SubscriptionRepository subscriptionRepository;
     private final StorageService storageService;
     private final CatalogMapper catalogMapper;
 
@@ -42,6 +50,7 @@ public class CatalogService {
             SongRepository songRepository,
             ArtistRepository artistRepository,
             UserRepository userRepository,
+            SubscriptionRepository subscriptionRepository,
             StorageService storageService,
             CatalogMapper catalogMapper
     ) {
@@ -49,6 +58,7 @@ public class CatalogService {
         this.songRepository = songRepository;
         this.artistRepository = artistRepository;
         this.userRepository = userRepository;
+        this.subscriptionRepository = subscriptionRepository;
         this.storageService = storageService;
         this.catalogMapper = catalogMapper;
     }
@@ -108,7 +118,7 @@ public class CatalogService {
     }
 
     @Transactional(readOnly = true)
-    public StreamUrlResponse getStreamUrl(UUID songId) {
+    public StreamUrlResponse getStreamUrl(UUID songId, UserPrincipal principal) {
         Song song = songRepository.findByIdWithRelations(songId)
                 .orElseThrow(() -> new ApiException("NOT_FOUND", "Canción no encontrada"));
 
@@ -119,8 +129,43 @@ public class CatalogService {
         }
 
         StorageService.PresignedUrl presigned = storageService.generatePresignedUrl(song.getStoragePath());
-        return new StreamUrlResponse(presigned.url(), presigned.expiresAt());
+        StreamAccess access = resolveStreamAccess(principal);
+
+        Integer maxPlaySeconds = access.maxPlaySeconds() == null
+                ? null
+                : Math.min(access.maxPlaySeconds(), song.getDurationSeconds());
+
+        return new StreamUrlResponse(
+                presigned.url(),
+                presigned.expiresAt(),
+                access.tier(),
+                maxPlaySeconds,
+                access.quality()
+        );
     }
+
+    private StreamAccess resolveStreamAccess(UserPrincipal principal) {
+        if (principal == null) {
+            return new StreamAccess("guest", GUEST_PREVIEW_SECONDS, "preview");
+        }
+
+        SubscriptionPlan plan = subscriptionRepository.findByUserId(principal.getId())
+                .map(Subscription::getPlan)
+                .orElse(SubscriptionPlan.gratis);
+
+        boolean premiumActive = plan == SubscriptionPlan.premium
+                && subscriptionRepository.findByUserId(principal.getId())
+                .map(sub -> sub.getEstado() == SubscriptionStatus.activa)
+                .orElse(false);
+
+        if (premiumActive) {
+            return new StreamAccess("premium", null, "high");
+        }
+
+        return new StreamAccess("free", null, "standard");
+    }
+
+    private record StreamAccess(String tier, Integer maxPlaySeconds, String quality) {}
 
     @Transactional(readOnly = true)
     public FeaturedCatalogResponse getFeatured() {

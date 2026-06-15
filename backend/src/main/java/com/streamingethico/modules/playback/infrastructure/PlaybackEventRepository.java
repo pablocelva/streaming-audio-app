@@ -38,4 +38,11 @@ public interface PlaybackEventRepository extends JpaRepository<PlaybackEvent, Lo
             ORDER BY COUNT(p) DESC
             """)
     List<Object[]> topSongsByArtist(UUID artistId, Instant from, Instant to, org.springframework.data.domain.Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(p) FROM PlaybackEvent p
+            WHERE p.validForRoyalties = true
+            AND p.playedAt BETWEEN :from AND :to
+            """)
+    long countValidPlaysBetween(Instant from, Instant to);
 }

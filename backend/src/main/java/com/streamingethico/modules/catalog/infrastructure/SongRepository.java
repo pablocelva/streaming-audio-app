@@ -40,4 +40,12 @@ public interface SongRepository extends JpaRepository<Song, UUID> {
     List<Song> searchByTitle(String query, Pageable pageable);
 
     int countByAlbumArtistIdAndActivoTrue(UUID artistId);
+
+    @Query("""
+            SELECT s FROM Song s
+            JOIN FETCH s.album a
+            JOIN FETCH a.artist ar
+            ORDER BY s.uploadedAt DESC
+            """)
+    List<Song> findAllForAdmin(Pageable pageable);
 }

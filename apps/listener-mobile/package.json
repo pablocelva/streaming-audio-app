@@ -1,0 +1,11 @@
+{
+  "name": "listener-mobile",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "start": "echo \"Pendiente — Fase 3B (Expo + feature-first)\""
+  },
+  "dependencies": {
+    "@streaming/api-client": "workspace:*"
+  }
+}

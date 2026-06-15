@@ -15,6 +15,12 @@ public interface ArtistRepository extends JpaRepository<Artist, UUID> {
 
     List<Artist> findByVerificadoFalseAndActivoTrue();
 
+    List<Artist> findAllByOrderByStageNameAsc();
+
+    long countByVerificadoTrue();
+
+    long countByVerificadoFalseAndActivoTrue();
+
     @Query("SELECT a FROM Artist a WHERE a.verificado = true AND a.activo = true AND LOWER(a.stageName) LIKE LOWER(CONCAT('%', :query, '%'))")
     List<Artist> searchVerified(@org.springframework.data.repository.query.Param("query") String query);
 }

@@ -41,6 +41,7 @@ cd backend && mvn spring-boot:run
 
 - API: http://localhost:8081/api/v1 (o el valor de `API_PORT` en `.env`)
 - Swagger: http://localhost:8081/api/v1/docs
+- Portal artista (local): http://localhost:5173
 
 ## Tests
 

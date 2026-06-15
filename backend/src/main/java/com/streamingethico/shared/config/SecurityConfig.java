@@ -37,6 +37,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/catalog/featured", "/api/v1/catalog/search").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/songs/*/stream-url").permitAll()
                         .requestMatchers(
                                 "/api/v1/docs/**",
                                 "/api/v1/openapi/**",

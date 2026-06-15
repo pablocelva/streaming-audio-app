@@ -25,8 +25,11 @@ public class SongController {
     }
 
     @GetMapping("/songs/{songId}/stream-url")
-    public StreamUrlResponse streamUrl(@PathVariable UUID songId) {
-        return catalogService.getStreamUrl(songId);
+    public StreamUrlResponse streamUrl(
+            @PathVariable UUID songId,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        return catalogService.getStreamUrl(songId, principal);
     }
 
     @PostMapping("/albums/{albumId}/songs")

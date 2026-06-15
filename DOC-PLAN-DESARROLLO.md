@@ -4,17 +4,33 @@
 
 El proyecto se desarrollará de forma iterativa utilizando Inteligencia Artificial asistida (Cursor) para acelerar la generación de código boilerplate y pruebas. La arquitectura prioriza la escalabilidad, la seguridad de los archivos de audio y la transparencia en los datos financieros.
 
+### Modelo de producto (como Spotify / Tidal)
+
+La plataforma tiene **dos experiencias separadas**, no un solo frontend:
+
+| Experiencia | Quién | Web | App móvil | Objetivo principal |
+|-------------|-------|-----|-----------|-------------------|
+| **Oyente** | Usuario `USER` | `apps/listener-web` | `apps/listener-mobile` | Escuchar, buscar, biblioteca, playlists |
+| **Artista** | Usuario `ARTIST` | `apps/artist-web` | `artist-mobile` (post-MVP) | Subir catálogo, estadísticas, declaración no-IA |
+| **Admin** | Usuario `ADMIN` | `apps/artist-web` (zona admin) | — | Verificar artistas, moderación, métricas globales |
+
+- El **oyente** usa el sitio/app principal (descubrir y reproducir).
+- El **artista** entra por **portal dedicado**: login propio, URL separada en producción (`artistas.<dominio>` o subruta `/portal`), sin mezclar con la UI de escucha.
+- Un mismo usuario puede tener roles `USER` + `ARTIST` y usar ambos productos con la misma cuenta.
+- La **API backend** es única (`/api/v1`); cada cliente consume los endpoints que su rol permite.
+
 ### Stack Definido
 
 - **Backend:** Java con Spring Boot (arquitectura modular, seguridad robusta, gestión transaccional).
 - **Base de Datos:** PostgreSQL (integridad relacional para metadatos y transacciones financieras).
-- **Frontend Web** (Panel Artista y Admin): React con TypeScript y Vite.
-- **Aplicación Móvil MVP:** React Native con Expo (despliegue rápido en iOS y Android desde una sola base de código).
+- **Web oyente:** React + TypeScript + Vite (`apps/listener-web`) — escuchar en navegador.
+- **Web artista/admin:** React + TypeScript + Vite (`apps/artist-web`) — portal dedicado artistas y operación interna.
+- **App móvil oyente:** React Native + Expo (`apps/listener-mobile`) — escuchar en iOS/Android.
 - **Almacenamiento de Audio:** Servicio de almacenamiento de objetos externo con CDN. MVP: **Cloudflare R2** o **AWS S3** (S3-compatible). No se almacenarán archivos binarios en la base de datos.
 - **Pagos:** Stripe (modo prueba en desarrollo, producción en Fase 4).
 - **API:** REST versionada (`/api/v1`) con contrato **OpenAPI 3** generado desde Spring Boot.
-- **Repositorio:** Monorepo pnpm — `apps/web`, `apps/mobile`, `packages/api-client`, `backend/`.
-- **CI/CD:** GitHub Actions (build + tests en cada PR desde Fase 1).
+- **Repositorio:** Monorepo pnpm — `apps/listener-web`, `apps/listener-mobile`, `apps/artist-web`, `packages/api-client`, `backend/`.
+- **CI/CD:** GitHub Actions (build + tests; despliegue real en Fase 4).
 - **Entornos:** `local` → `staging` → `prod` (configurados desde Fase 1).
 
 ### Futuro (post-MVP)
@@ -120,11 +136,11 @@ Un usuario puede tener varios roles (ej.: `USER` + `ARTIST`). La suscripción (`
 - Tests unitarios de auth, validación de plays y permisos.
 - CI: build + tests en GitHub Actions.
 
-### Fase 2A: Panel Artista Web (React + TypeScript)
+### Fase 2A: Portal Artista Web (`artist-web`)
 
-**Objetivo:** Que los artistas gestionen su catálogo y vean estadísticas sin depender aún de pagos reales.
+**Objetivo:** Portal dedicado para que los artistas gestionen catálogo y estadísticas (equivalente web de “Spotify for Artists”).
 
-**Ubicación:** `apps/web/` — arquitectura **feature-first** (ver `DOC-ARQUITECTURA.md`).
+**Ubicación:** `apps/artist-web/` — login/región **solo artista**, separada del producto oyente.
 
 **Stack:** React 19 + Vite + TypeScript + **pnpm** + **Zod** (`@streaming/api-client`).
 
@@ -132,39 +148,48 @@ Un usuario puede tener varios roles (ej.: `USER` + `ARTIST`). La suscripción (`
 
 | Feature | Endpoints API | Prioridad |
 |---------|---------------|-----------|
-| `features/auth` | `/auth/login`, `/auth/register/artist` | Alta — login ya scaffolded |
+| `features/auth` | `/auth/login`, `/auth/register/artist` | Alta |
 | `features/artist-declaration` | `/artists/me/declaration` | Alta |
 | `features/upload-music` | `/albums`, `/albums/{id}/songs` | Alta |
 | `features/artist-stats` | `/artists/me/stats` | Media |
 
 **Tareas:**
 
-- Completar registro de artista con validación Zod.
+- Registro e inicio de sesión de artista (no mezclar UI con oyente).
 - Formulario de subida: crear álbum + subir canciones (multipart, `durationSeconds`).
 - Dashboard: reproducciones totales, desglose gratis/premium, peso acumulado, top canciones.
 - Firma de declaración de no-IA (checkbox + versión documento).
-- Extraer componentes reutilizables a `entities/` y `shared/ui/` según necesidad.
-- Tests E2E mínimos del flujo de subida.
+- Enlace visible “¿Eres oyente? Ir a escuchar” → `listener-web`.
 
-### Fase 2B: Panel Admin Web
+### Fase 2B: Panel Admin Web (`artist-web`)
 
 **Objetivo:** Operación interna mínima de la plataforma.
 
-**Ubicación:** `apps/web/src/features/admin-verification/` (misma app, rutas protegidas con rol `ADMIN`).
+**Ubicación:** `apps/artist-web/src/features/admin-verification/` (misma app artista, rutas protegidas con rol `ADMIN`).
+
 - Gestión de estados: activar/suspender artista o canción.
 - Dashboard global: usuarios registrados, reproducciones del mes, ingresos pendientes.
 - Solo accesible con rol `ADMIN`.
 
-### Fase 3: Aplicación Móvil MVP (React Native + Expo)
+### Fase 3A: Cliente Oyente Web (`listener-web`)
 
-**Objetivo:** App funcional para escuchar música.
+**Objetivo:** Sitio web para **escuchar** música (equivalente a spotify.com / listen.tidal.com).
 
-- Proyecto Expo en `mobile/`.
-- Pantallas: Home (destacados), Búsqueda (PostgreSQL `ILIKE` en MVP), Reproductor (play/pause/siguiente/anterior/progreso), Biblioteca (favoritos + playlists básicas).
-- Background playback (**riesgo técnico elevado** — priorizar pruebas en iOS y Android desde el inicio del sprint).
-- Streaming vía URLs firmadas desde la API.
-- Login/registro de usuario (`USER`). Suscripción premium con UI preparada; integración Stripe diferida a Fase 4.
-- Tests en dispositivo real del reproductor y reproducciones.
+**Ubicación:** `apps/listener-web/` — producto principal del oyente en navegador.
+
+- Pantallas: Inicio (destacados), Búsqueda, Reproductor (play/pause/progreso), Biblioteca (favoritos + playlists).
+- Login/registro de usuario (`USER`) — distinto del portal artista.
+- Streaming vía URLs firmadas desde la API; registro de reproducciones (`/playback/events`).
+- UI preparada para plan premium; integración Stripe diferida a Fase 4.
+
+### Fase 3B: App Oyente Móvil (`listener-mobile`)
+
+**Objetivo:** App iOS/Android para escuchar (paridad funcional con `listener-web` en MVP).
+
+- Proyecto Expo en `apps/listener-mobile/`.
+- Mismas capacidades core que 3A: destacados, búsqueda, reproductor, biblioteca.
+- Background playback (**riesgo técnico elevado** — priorizar pruebas en dispositivo real).
+- Reutiliza `@streaming/api-client` y reglas de negocio del backend.
 
 ### Fase 4: Pagos, Regalías y Producción
 
@@ -181,7 +206,8 @@ Un usuario puede tener varios roles (ej.: `USER` + `ARTIST`). La suscripción (`
 
 ### Fase 5: Futuro y Escalamiento (Pendiente)
 
-- Migración del cliente Android a Kotlin Nativo.
+- App móvil artista (`artist-mobile`) para gestión ligera del catálogo (opcional).
+- Migración del cliente Android oyente a Kotlin Nativo.
 - Algoritmos de recomendación avanzados.
 - Particionamiento de tabla `Reproducciones` por fecha.
 - Colas asíncronas para ingestión de plays a alto volumen.

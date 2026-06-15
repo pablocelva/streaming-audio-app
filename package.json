@@ -3,9 +3,10 @@
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "web:dev": "pnpm --filter web dev",
-    "web:build": "pnpm --filter web build",
-    "mobile:dev": "pnpm --filter mobile start",
+    "artist:dev": "pnpm --filter artist-web dev",
+    "listener:web:dev": "pnpm --filter listener-web dev",
+    "listener:mobile:dev": "pnpm --filter listener-mobile start",
+    "web:build": "pnpm --filter artist-web build",
     "api:typecheck": "pnpm --filter @streaming/api-client typecheck"
   }
 }

@@ -6,18 +6,29 @@ Documento de referencia para el desarrollo. Mantener alineado con el código.
 
 ## 1. Visión general del monorepo
 
+Modelo **dos productos** (oyente + artista), como Spotify/Tidal:
+
 ```
 streaming-audio-app/
 ├── apps/
-│   ├── web/                 # React + Vite — panel artista/admin
-│   └── mobile/              # React Native + Expo — app oyente (Fase 3)
+│   ├── listener-web/        # Web oyente — escuchar, buscar, biblioteca (Fase 3A)
+│   ├── listener-mobile/     # App oyente — Expo iOS/Android (Fase 3B)
+│   └── artist-web/          # Portal artista + admin — subir, stats (Fase 2A/2B)
 ├── packages/
 │   ├── api-client/          # Schemas Zod + cliente HTTP compartido
 │   └── tsconfig/            # Configuraciones TypeScript base
-├── backend/                 # Spring Boot — monolito modular
+├── backend/                 # Spring Boot — monolito modular (API única)
 ├── docs/                    # OpenAPI y documentación técnica
-└── scripts/                 # Utilidades de mantenimiento
+└── scripts/                 # Utilidades de desarrollo local (arranque backend)
 ```
+
+| App | Puerto local | Rol | Producción (objetivo) |
+|-----|--------------|-----|------------------------|
+| `listener-web` | 5174 | `USER` | Dominio principal |
+| `artist-web` | 5173 | `ARTIST`, `ADMIN` | `artistas.<dominio>` o `/portal` |
+| `listener-mobile` | Expo | `USER` | App Store / Play Store |
+
+**Futuro:** `artist-mobile` (gestión artista en móvil) — post-MVP.
 
 **Gestor de paquetes frontend:** pnpm workspaces  
 **Validación de datos frontend:** Zod (schemas en `@streaming/api-client`)
@@ -80,34 +91,22 @@ com.streamingethico/
 
 ---
 
-## 3. Frontend web — Feature-first (FSD-lite)
+## 3. Frontend — Feature-first (FSD-lite)
 
-### Por qué no FSD estricto
+Misma filosofía en **cada app** (`listener-web`, `artist-web`, `listener-mobile`).  
+**Prohibido** mezclar pantallas oyente y artista en la misma app.
 
-FSD completo (`pages/widgets/features/entities/shared`) aporta más ceremonia de la necesaria para un panel artista + admin con equipo pequeño. Usamos **feature-first** con capas ligeras que capturan el 80% del beneficio.
-
-### Estructura `apps/web/src/`
+### Estructura tipo `apps/<app>/src/`
 
 ```
 src/
-├── app/                    # Shell: router, layouts, providers globales
-│   ├── main.tsx
-│   ├── App.tsx
-│   ├── layouts/
-│   └── routes/
-├── features/               # Una carpeta por caso de uso / pantalla
-│   ├── auth/
-│   │   ├── ui/             # Componentes de la feature
-│   │   └── model/          # Estado, hooks, lógica local
-│   ├── upload-music/
-│   ├── artist-stats/
-│   ├── artist-declaration/ # Fase 2A
-│   └── admin-verification/ # Fase 2B
+├── app/                    # Router, layouts, providers
+├── features/               # Un caso de uso por carpeta
 ├── entities/               # Modelos UI reutilizables (song, album, artist)
 └── shared/
-    ├── api/                # Instancia del cliente + funciones por dominio
-    ├── ui/                 # Design system mínimo
-    └── lib/                # Utilidades
+    ├── api/                # Cliente HTTP (usa @streaming/api-client)
+    ├── ui/
+    └── lib/
 ```
 
 ### Reglas de dependencia (frontend)
@@ -119,37 +118,58 @@ entities → shared
 shared → (nada interno)
 ```
 
-- **Prohibido:** `features/upload-music` importando directamente de `features/auth`  
-  → Extraer a `entities` o `shared`
+- **Prohibido:** `features/A` importando `features/B` directamente
 - **Zod obligatorio** para formularios y parseo de respuestas API
-- Los schemas viven en `packages/api-client`, no duplicados en cada feature
+- Los schemas viven en `packages/api-client`
 
-### Stack Fase 2A
+### `artist-web` — Portal artista/admin (Fase 2)
+
+```
+features/
+  auth/                  # Login/registro ARTIST
+  artist-declaration/
+  upload-music/
+  artist-stats/
+  admin-verification/    # Fase 2B
+```
+
+### `listener-web` — Cliente oyente web (Fase 3A)
+
+```
+features/
+  discover/              # Home, destacados
+  search/
+  player/                # Reproductor
+  library/               # Favoritos, playlists
+  auth/                  # Login/registro USER
+```
+
+### Stack
 
 - React 19 + Vite + TypeScript
-- react-router-dom (navegación)
-- react-hook-form + `@hookform/resolvers/zod` (formularios)
-- `@streaming/api-client` (tipos + validación)
+- react-router-dom
+- react-hook-form + `@hookform/resolvers/zod`
+- `@streaming/api-client`
 
 ---
 
-## 4. Mobile — Feature-first (Fase 3)
-
-Misma filosofía que web, sin capas FSD adicionales:
+## 4. Mobile oyente — `listener-mobile` (Fase 3B)
 
 ```
-apps/mobile/src/
+apps/listener-mobile/src/
 ├── app/
-├── features/     # player, search, library, auth
+├── features/     # discover, search, player, library, auth
 ├── entities/
 └── shared/       # reutiliza @streaming/api-client
 ```
+
+Paridad funcional con `listener-web` en el MVP.
 
 ---
 
 ## 5. Paquete `@streaming/api-client`
 
-Contrato tipado entre frontend y backend.
+Contrato tipado entre **todos** los clientes y el backend.
 
 ```
 packages/api-client/src/
@@ -158,41 +178,62 @@ packages/api-client/src/
 └── index.ts
 ```
 
-**Regla:** Todo DTO que cruce el límite HTTP debe tener schema Zod aquí. El backend mantiene OpenAPI en `docs/openapi-v1.yaml`; los schemas Zod son el espejo en TypeScript.
+**Regla:** Todo DTO que cruce el límite HTTP debe tener schema Zod aquí.
 
 ---
 
-## 6. Mapeo módulos backend ↔ features frontend
+## 6. Mapeo backend ↔ clientes frontend
 
-| Backend module | Feature web (Fase 2A/2B) |
-|--------------|--------------------------|
-| `auth` + `user` | `features/auth` |
-| `artist` | `features/artist-declaration`, `features/artist-stats` |
-| `catalog` + `storage` | `features/upload-music` |
-| `playback` | `features/artist-stats` (visualización) |
-| `admin` | `features/admin-verification` (Fase 2B) |
-
----
-
-## 7. Fase 2A — Checklist de implementación
-
-- [ ] `features/auth`: registro artista completo con Zod
-- [ ] `features/artist-declaration`: firma no-IA
-- [ ] `features/upload-music`: crear álbum + subir canciones (multipart)
-- [ ] `features/artist-stats`: dashboard reproducciones (gratis vs premium, peso)
-- [ ] `entities/`: componentes `SongCard`, `AlbumForm` si se reutilizan
-- [ ] `shared/ui/`: inputs, botones, layout base
-- [ ] Tests E2E mínimos del flujo de subida
+| Backend module | Cliente oyente (`listener-*`) | Portal artista (`artist-web`) |
+|----------------|------------------------------|-------------------------------|
+| `auth` + `user` | Registro/login `USER` | Registro/login `ARTIST` |
+| `catalog` | Descubrir, buscar, stream URL | Subir álbumes/canciones |
+| `playback` | Registrar escucha | — |
+| `library` | Favoritos, playlists | — |
+| `artist` | — | Declaración, perfil, stats |
+| `admin` | — | Verificación, moderación |
 
 ---
 
-## 8. Scripts de mantenimiento
+## 7. Checklist por fase
+
+### Fase 2A — `artist-web` (portal artista)
+
+- [x] `features/auth`: registro artista completo con Zod
+- [x] `features/artist-declaration`: firma no-IA
+- [x] `features/upload-music`: crear álbum + subir canciones (multipart)
+- [x] `features/artist-stats`: dashboard reproducciones (gratis vs premium, peso)
+- [x] Enlace cruzado al producto oyente (`listener-web`)
+- [ ] `entities/`, `shared/ui/`, tests E2E subida
+
+### Fase 2B — `artist-web` (admin)
+
+- [x] `features/admin-verification`: resumen global
+- [x] Cola de verificación de artistas
+- [x] Moderación: activar/suspender artistas y canciones
+
+### Fase 3A — `listener-web` (oyente web)
+
+- [x] `features/discover`: catálogo destacado
+- [x] `features/search`
+- [x] `features/player`: streaming con tier guest/free/premium
+- [x] `features/library`: favoritos (requiere cuenta)
+- [x] `features/auth`: registro/login USER
+- [x] Escucha sin cuenta (preview 30s), cuenta gratis (completa), premium (alta calidad MVP)
+
+### Fase 3B — `listener-mobile`
+
+- [ ] Scaffold Expo + paridad con 3A
+
+---
+
+## 8. Scripts de desarrollo local
 
 | Script | Uso |
 |--------|-----|
-| `scripts/refactor-backend-packages.py` | Migración inicial a módulos (ya ejecutado) |
-| `scripts/fix-backend-imports.py` | Corrección de imports tras refactor |
-| `scripts/add-missing-imports.py` | Añade imports faltantes por tipo |
+| `scripts/run-backend.sh` | Arranca el backend |
+| `scripts/stop-backend.sh` | Detiene el proceso en `API_PORT` |
+| `scripts/status-backend.sh` | Comprueba si el backend ya está corriendo |
 
 ---
 

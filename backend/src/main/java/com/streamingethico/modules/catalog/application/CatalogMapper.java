@@ -98,7 +98,13 @@ public class CatalogMapper {
             boolean declarationSigned
     ) {}
 
-    public record StreamUrlResponse(String url, Instant expiresAt) {}
+    public record StreamUrlResponse(
+            String url,
+            Instant expiresAt,
+            String accessTier,
+            Integer maxPlaySeconds,
+            String quality
+    ) {}
 
     public record FeaturedCatalogResponse(
             List<AlbumResponse> albums,

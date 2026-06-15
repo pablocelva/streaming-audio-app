@@ -8,13 +8,59 @@ importers:
 
   .: {}
 
-  apps/mobile:
+  apps/artist-web:
+    dependencies:
+      '@hookform/resolvers':
+        specifier: ^4.1.3
+        version: 4.1.3(react-hook-form@7.79.0(react@19.2.7))
+      '@streaming/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
+      react:
+        specifier: ^19.0.0
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.7(react@19.2.7)
+      react-hook-form:
+        specifier: ^7.54.2
+        version: 7.79.0(react@19.2.7)
+      react-router-dom:
+        specifier: ^7.4.0
+        version: 7.17.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      '@streaming/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/node':
+        specifier: ^22.13.10
+        version: 22.19.21
+      '@types/react':
+        specifier: ^19.0.10
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19.0.4
+        version: 19.2.3(@types/react@19.2.17)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.7.0(vite@6.4.3(@types/node@22.19.21))
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+      vite:
+        specifier: ^6.2.2
+        version: 6.4.3(@types/node@22.19.21)
+
+  apps/listener-mobile:
     dependencies:
       '@streaming/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
 
-  apps/web:
+  apps/listener-web:
     dependencies:
       '@hookform/resolvers':
         specifier: ^4.1.3

@@ -72,6 +72,30 @@ export const albumSchema = z.object({
   songs: z.array(songSummarySchema).optional(),
 });
 
+export const featuredCatalogSchema = z.object({
+  albums: z.array(albumSchema),
+  songs: z.array(songSummarySchema),
+});
+
+export const searchResultsSchema = z.object({
+  artists: z.array(artistProfileSchema),
+  songs: z.array(songSummarySchema),
+});
+
+export const streamUrlResponseSchema = z.object({
+  url: z.string().url(),
+  expiresAt: z.string().datetime(),
+  accessTier: z.enum(["guest", "free", "premium"]),
+  maxPlaySeconds: z.number().int().nullable().optional(),
+  quality: z.enum(["preview", "standard", "high"]),
+});
+
+export const playbackEventResponseSchema = z.object({
+  id: z.number().int(),
+  isValidForRoyalties: z.boolean(),
+  weight: z.number(),
+});
+
 export const artistStatsSchema = z.object({
   totalPlays: z.number().int(),
   premiumPlays: z.number().int(),
@@ -94,6 +118,47 @@ export const playbackEventRequestSchema = z.object({
   origin: playbackOriginSchema,
 });
 
+export const signDeclarationRequestSchema = z.object({
+  accepted: z.literal(true),
+  documentVersion: z.string().min(1),
+});
+
+export const createAlbumRequestSchema = z.object({
+  title: z.string().min(1),
+  releaseYear: z.number().int().min(1900).max(2100).optional(),
+  genre: z.string().optional(),
+  coverImageUrl: z.string().url().optional(),
+});
+
+export const songResponseSchema = z.object({
+  id: z.string().uuid(),
+  albumId: z.string().uuid(),
+  title: z.string(),
+  durationSeconds: z.number().int(),
+  orderInAlbum: z.number().int(),
+  isExplicit: z.boolean(),
+});
+
+export const adminDashboardSchema = z.object({
+  registeredUsers: z.number().int(),
+  verifiedArtists: z.number().int(),
+  pendingArtists: z.number().int(),
+  monthlyPlays: z.number().int(),
+  pendingSettlements: z.number().int(),
+});
+
+export const adminSongSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  artistName: z.string(),
+  albumTitle: z.string(),
+  active: z.boolean(),
+});
+
+export const setActiveRequestSchema = z.object({
+  active: z.boolean(),
+});
+
 export const apiErrorSchema = z.object({
   code: z.string(),
   message: z.string(),
@@ -105,3 +170,8 @@ export type UserProfile = z.infer<typeof userProfileSchema>;
 export type ArtistProfile = z.infer<typeof artistProfileSchema>;
 export type ArtistStats = z.infer<typeof artistStatsSchema>;
 export type SongSummary = z.infer<typeof songSummarySchema>;
+export type FeaturedCatalog = z.infer<typeof featuredCatalogSchema>;
+export type SearchResults = z.infer<typeof searchResultsSchema>;
+export type StreamUrlResponse = z.infer<typeof streamUrlResponseSchema>;
+export type AdminDashboard = z.infer<typeof adminDashboardSchema>;
+export type AdminSong = z.infer<typeof adminSongSchema>;
