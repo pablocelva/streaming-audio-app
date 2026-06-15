@@ -223,7 +223,10 @@ packages/api-client/src/
 
 ### Fase 3B — `listener-mobile`
 
-- [ ] Scaffold Expo + paridad con 3A
+- [x] Scaffold Expo + expo-router
+- [x] Paridad con 3A: inicio, búsqueda, biblioteca, login/registro
+- [x] Reproductor `expo-av` con tier guest/free/premium
+- [x] Background playback (config base; validar en dispositivo)
 
 ---
 

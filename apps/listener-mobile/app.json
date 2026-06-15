@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Streaming Ético",
+    "slug": "streaming-etico-listener",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "streaming-etico",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.streamingethico.listener",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      }
+    },
+    "android": {
+      "package": "com.streamingethico.listener",
+      "adaptiveIcon": {
+        "backgroundColor": "#0f172a"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-asset",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

@@ -15,7 +15,8 @@ dist/
 build/
 .expo/
 web/dist/
-mobile/.expo/
+.mobile/.expo/
+apps/listener-mobile/.expo/
 *.tsbuildinfo
 
 # IDE

@@ -50,6 +50,7 @@ cp apps/listener-web/.env.example apps/listener-web/.env
 
 pnpm artist:dev          # Portal artista → http://localhost:5173
 pnpm listener:web:dev    # Web oyente    → http://localhost:5174
+pnpm listener:mobile:dev # App oyente Expo (ver apps/listener-mobile/README.md)
 ```
 
 | Servicio | URL | Quién |
@@ -58,6 +59,7 @@ pnpm listener:web:dev    # Web oyente    → http://localhost:5174
 | Swagger | http://localhost:8081/api/v1/docs | Dev |
 | Portal artista | http://localhost:5173 | Artistas / Admin |
 | Web oyente | http://localhost:5174 | Oyentes |
+| App oyente móvil | Expo Go / emulador | Oyentes (Fase 3B) |
 
 ## CI en GitHub
 
@@ -70,7 +72,7 @@ Si ves **CI fallido** en el repositorio:
 
 1. Abre **Actions** → el run fallido → revisa qué job falló (backend o frontend).
 2. Si ambos fallan en pocos segundos sin logs útiles, comprueba en **Settings → Actions** que GitHub Actions esté **habilitado** en el repo.
-3. Reproduce localmente: `cd backend && mvn verify` y `pnpm api:typecheck && pnpm --filter artist-web typecheck && pnpm --filter listener-web typecheck`.
+3. Reproduce localmente: `cd backend && mvn verify` y `pnpm api:typecheck && pnpm --filter artist-web typecheck && pnpm --filter listener-web typecheck && pnpm --filter listener-mobile typecheck`.
 
 El badge rojo no afecta el desarrollo local; indica que el último push no pasó las comprobaciones automáticas.
 

@@ -50,3 +50,4 @@ jobs:
           pnpm api:typecheck
           pnpm --filter artist-web typecheck
           pnpm --filter listener-web typecheck
+          pnpm --filter listener-mobile typecheck
