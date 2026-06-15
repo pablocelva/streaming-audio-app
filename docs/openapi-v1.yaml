@@ -1,0 +1,857 @@
+openapi: 3.0.3
+info:
+  title: Streaming Musical Ético API
+  version: 1.0.0
+  description: |
+    API REST para la plataforma de streaming musical ético orientada a artistas independientes.
+
+    **Modelo de regalías:**
+    - Reproducciones premium: peso 1.0
+    - Reproducciones gratuitas: peso 0.25
+    - Tope máximo por artista: 20% del fondo neto mensual
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Desarrollo local
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Artists
+  - name: Catalog
+  - name: Playback
+  - name: Library
+  - name: Royalties
+  - name: Admin
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Registro de usuario oyente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Usuario creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email ya registrado
+
+  /auth/register/artist:
+    post:
+      tags: [Auth]
+      summary: Registro de artista (crea usuario + perfil artista)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterArtistRequest'
+      responses:
+        '201':
+          description: Artista creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Inicio de sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Tokens emitidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Renovar access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Nuevo access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revocar refresh token
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Sesión cerrada
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Perfil del usuario autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Perfil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /artists/me:
+    get:
+      tags: [Artists]
+      summary: Perfil de artista del usuario autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Perfil artista
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistProfile'
+        '404':
+          description: El usuario no es artista
+
+    patch:
+      tags: [Artists]
+      summary: Actualizar perfil de artista
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateArtistRequest'
+      responses:
+        '200':
+          description: Perfil actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistProfile'
+
+  /artists/me/declaration:
+    post:
+      tags: [Artists]
+      summary: Firmar declaración de no uso de IA
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accepted, documentVersion]
+              properties:
+                accepted:
+                  type: boolean
+                documentVersion:
+                  type: string
+                  example: v1.0
+      responses:
+        '201':
+          description: Declaración registrada
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /artists/me/stats:
+    get:
+      tags: [Artists]
+      summary: Estadísticas de reproducciones del artista
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Estadísticas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistStats'
+
+  /albums:
+    post:
+      tags: [Catalog]
+      summary: Crear álbum (artista)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAlbumRequest'
+      responses:
+        '201':
+          description: Álbum creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+
+  /albums/{albumId}/songs:
+    post:
+      tags: [Catalog]
+      summary: Subir canción a un álbum
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AlbumId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, title]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: MP3 o M4A, máx 50 MB
+                title:
+                  type: string
+                orderInAlbum:
+                  type: integer
+                isExplicit:
+                  type: boolean
+      responses:
+        '201':
+          description: Canción creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Song'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /songs/{songId}/stream-url:
+    get:
+      tags: [Catalog]
+      summary: Obtener URL pre-firmada para streaming
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SongId'
+      responses:
+        '200':
+          description: URL temporal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamUrlResponse'
+        '404':
+          description: Canción no encontrada
+
+  /catalog/featured:
+    get:
+      tags: [Catalog]
+      summary: Canciones y álbumes destacados (home)
+      responses:
+        '200':
+          description: Listado destacado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeaturedCatalog'
+
+  /catalog/search:
+    get:
+      tags: [Catalog]
+      summary: Búsqueda de canciones y artistas
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+      responses:
+        '200':
+          description: Resultados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResults'
+
+  /playback/events:
+    post:
+      tags: [Playback]
+      summary: Registrar evento de reproducción
+      description: |
+        Registra una reproducción. El backend calcula `esValidaRegalias` y `pesoRegalias`
+        según duración escuchada y plan del usuario (premium=1.0, gratis=0.25).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaybackEventRequest'
+      responses:
+        '201':
+          description: Evento registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaybackEventResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /library/favorites:
+    get:
+      tags: [Library]
+      summary: Listar favoritos del usuario
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Favoritos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SongSummary'
+
+    post:
+      tags: [Library]
+      summary: Añadir canción a favoritos
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [songId]
+              properties:
+                songId:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Añadido
+
+  /library/favorites/{songId}:
+    delete:
+      tags: [Library]
+      summary: Quitar canción de favoritos
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SongId'
+      responses:
+        '204':
+          description: Eliminado
+
+  /library/playlists:
+    get:
+      tags: [Library]
+      summary: Listar playlists del usuario
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Playlists
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Playlist'
+
+    post:
+      tags: [Library]
+      summary: Crear playlist
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Playlist creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Playlist'
+
+  /royalties/me:
+    get:
+      tags: [Royalties]
+      summary: Liquidaciones mensuales del artista autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Historial de liquidaciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoyaltySettlement'
+
+  /admin/artists/pending:
+    get:
+      tags: [Admin]
+      summary: Artistas pendientes de verificación
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cola de verificación
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ArtistProfile'
+
+  /admin/artists/{artistId}/verify:
+    post:
+      tags: [Admin]
+      summary: Verificar artista
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: artistId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Artista verificado
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    AlbumId:
+      name: albumId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SongId:
+      name: songId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Petición inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: No autenticado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Sin permisos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    RegisterRequest:
+      type: object
+      required: [email, password, fullName]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        fullName:
+          type: string
+
+    RegisterArtistRequest:
+      allOf:
+        - $ref: '#/components/schemas/RegisterRequest'
+        - type: object
+          required: [stageName]
+          properties:
+            stageName:
+              type: string
+            biography:
+              type: string
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [accessToken, refreshToken, expiresIn]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+          description: Segundos hasta expiración del access token
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        fullName:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [USER, ARTIST, ADMIN]
+        subscription:
+          $ref: '#/components/schemas/Subscription'
+
+    Subscription:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: [gratis, premium]
+        status:
+          type: string
+          enum: [activa, cancelada, vencida, pendiente]
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    ArtistProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        stageName:
+          type: string
+        biography:
+          type: string
+        profileImageUrl:
+          type: string
+          nullable: true
+        verified:
+          type: boolean
+        active:
+          type: boolean
+        declarationSigned:
+          type: boolean
+
+    UpdateArtistRequest:
+      type: object
+      properties:
+        stageName:
+          type: string
+        biography:
+          type: string
+
+    ArtistStats:
+      type: object
+      properties:
+        totalPlays:
+          type: integer
+        premiumPlays:
+          type: integer
+        freePlays:
+          type: integer
+        totalWeight:
+          type: number
+          format: double
+          description: Suma de pesos (premium×1.0 + gratis×0.25)
+        topSongs:
+          type: array
+          items:
+            type: object
+            properties:
+              songId:
+                type: string
+                format: uuid
+              title:
+                type: string
+              plays:
+                type: integer
+              weight:
+                type: number
+
+    CreateAlbumRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+        releaseYear:
+          type: integer
+        genre:
+          type: string
+        coverImageUrl:
+          type: string
+
+    Album:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        releaseYear:
+          type: integer
+        genre:
+          type: string
+        coverImageUrl:
+          type: string
+        artistId:
+          type: string
+          format: uuid
+        songs:
+          type: array
+          items:
+            $ref: '#/components/schemas/SongSummary'
+
+    Song:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        albumId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        durationSeconds:
+          type: integer
+        orderInAlbum:
+          type: integer
+        isExplicit:
+          type: boolean
+
+    SongSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        durationSeconds:
+          type: integer
+        artistName:
+          type: string
+        albumTitle:
+          type: string
+
+    StreamUrlResponse:
+      type: object
+      required: [url, expiresAt]
+      properties:
+        url:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+
+    PlaybackEventRequest:
+      type: object
+      required: [songId, listenedSeconds, sessionId, origin]
+      properties:
+        songId:
+          type: string
+          format: uuid
+        listenedSeconds:
+          type: integer
+          minimum: 0
+        sessionId:
+          type: string
+        origin:
+          type: string
+          enum: [web, ios, android]
+
+    PlaybackEventResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        isValidForRoyalties:
+          type: boolean
+        weight:
+          type: number
+          description: 1.0 si premium, 0.25 si gratis
+
+    FeaturedCatalog:
+      type: object
+      properties:
+        albums:
+          type: array
+          items:
+            $ref: '#/components/schemas/Album'
+        songs:
+          type: array
+          items:
+            $ref: '#/components/schemas/SongSummary'
+
+    SearchResults:
+      type: object
+      properties:
+        artists:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtistProfile'
+        songs:
+          type: array
+          items:
+            $ref: '#/components/schemas/SongSummary'
+
+    Playlist:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        songCount:
+          type: integer
+        songs:
+          type: array
+          items:
+            $ref: '#/components/schemas/SongSummary'
+
+    RoyaltySettlement:
+      type: object
+      properties:
+        periodMonth:
+          type: integer
+        periodYear:
+          type: integer
+        totalPlays:
+          type: integer
+        premiumPlays:
+          type: integer
+        freePlays:
+          type: integer
+        totalWeight:
+          type: number
+        participationPercent:
+          type: number
+        grossAmount:
+          type: number
+        capApplied:
+          type: boolean
+        finalAmount:
+          type: number
+        paymentStatus:
+          type: string
+          enum: [pendiente, pagado, fallido]
